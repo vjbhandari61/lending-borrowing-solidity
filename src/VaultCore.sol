@@ -14,14 +14,12 @@ contract VaulCore is ERC20 {
     uint256 internal _borrowLimit = 0.75 ether;
     mapping(address => Vault) internal _vaults;
 
-    event Deposit(
-        address indexed depositor,
-        uint256 collateralAmt,
-        uint256 borrowedAmt
-    );
+    event Deposit(address indexed depositor, uint256 collateralAmt);
+    event Borrow(address indexed borrower, uint256 debtAmt);
 
-    error InsufficientBalance();
+    error InsufficientAllowance();
     error InvalidAddress();
+    error InsufficientCollateralForRequestedDebt();
 
     constructor(
         string memory name_,
@@ -31,24 +29,29 @@ contract VaulCore is ERC20 {
         _collateralAsset = IERC20(collateralAsset_);
     }
 
-    function deposit(uint256 amount) external {
-        if (_collateralAsset.balanceOf(msg.sender) < amount) {
-            revert InsufficientBalance();
+    function deposit(uint256 collateralAmt) external {
+        if (_collateralAsset.allowance(msg.sender, address(this)) < collateralAmt) {
+            revert InsufficientAllowance();
         }
-        _deposit(amount);
+        _deposit(collateralAmt);
+    }
+
+    function borrow(uint256 debtAmt) external {
+        uint256 debt = _calculateDebt(debtAmt);
+        _borrow(debt);
     }
 
     function _deposit(uint256 _amt) internal {
-        uint256 _borrowAmt = _calculateBorrowAmt(_amt);
-        _vaults[msg.sender] = Vault(_amt, _borrowAmt);
-
+        _vaults[msg.sender].collateralAmt += _amt;
         _collateralAsset.transferFrom(msg.sender, address(this), _amt);
-        super._mint(msg.sender, _borrowAmt);
-
-        emit Deposit(msg.sender, _amt, _borrowAmt);
+        emit Deposit(msg.sender, _amt);
     }
 
-    function _calculateBorrowAmt(uint256 _amt) internal view returns (uint256) {
+    function _borrow(uint256 _borrowAmt) internal {
+
+    }
+
+    function _calculateDebt(uint256 _amt) internal view returns (uint256) {
         uint256 _borrowAmt = _borrowLimit * _amt;
         return _borrowAmt;
     }
