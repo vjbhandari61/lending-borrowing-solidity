@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.32;
+pragma solidity ^0.8.30;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,7 +11,7 @@ contract VaulCore is ERC20 {
     }
 
     IERC20 internal _collateralAsset;
-    uint256 internal _borrowLimit = 0.75 ether;
+    uint256 internal _colFactorBps = 7500;
     mapping(address => Vault) internal _vaults;
 
     event Deposit(address indexed depositor, uint256 collateralAmt);
@@ -20,6 +20,8 @@ contract VaulCore is ERC20 {
     error InsufficientAllowance();
     error InvalidAddress();
     error InsufficientCollateralForRequestedDebt();
+    error InsufficientLiquidityInPool();
+    error CannotBorrowMoreThanDebtCeiling();
 
     constructor(
         string memory name_,
@@ -30,29 +32,47 @@ contract VaulCore is ERC20 {
     }
 
     function deposit(uint256 collateralAmt) external {
-        if (_collateralAsset.allowance(msg.sender, address(this)) < collateralAmt) {
+        if(_collateralAsset.allowance(msg.sender, address(this)) < collateralAmt) {
             revert InsufficientAllowance();
         }
         _deposit(collateralAmt);
     }
 
     function borrow(uint256 debtAmt) external {
-        uint256 debt = _calculateDebt(debtAmt);
-        _borrow(debt);
+        // if(_collateralAsset.balanceOf(address(this)) >= debtAmt){ revert InsufficientLiquidityInPool(); }
+        _borrow(debtAmt);
     }
 
-    function _deposit(uint256 _amt) internal {
-        _vaults[msg.sender].collateralAmt += _amt;
-        _collateralAsset.transferFrom(msg.sender, address(this), _amt);
-        emit Deposit(msg.sender, _amt);
+    function calculateDebt(uint256 collateralAmt) public view returns (uint256) {
+        return _calculateDebt(collateralAmt);
     }
 
-    function _borrow(uint256 _borrowAmt) internal {
+    function getUserVault(address user) public view returns(Vault memory) {
+        return _vaults[user];
+    } 
 
+    function _deposit(uint256 _collateral) internal {
+        _vaults[msg.sender].collateralAmt += _collateral;
+        _collateralAsset.transferFrom(msg.sender, address(this), _collateral);
+
+        emit Deposit(msg.sender, _collateral);
     }
 
-    function _calculateDebt(uint256 _amt) internal view returns (uint256) {
-        uint256 _borrowAmt = _borrowLimit * _amt;
-        return _borrowAmt;
+    function _borrow(uint256 _debtAmt) internal {
+        Vault storage vault = _vaults[msg.sender];
+        uint256 maxBorrowable = _calculateDebt(vault.collateralAmt);
+
+        if (vault.debt + _debtAmt >= maxBorrowable) {
+            revert CannotBorrowMoreThanDebtCeiling();
+        }
+        vault.debt += _debtAmt;
+        _mint(msg.sender, _debtAmt);
+
+        emit Borrow(msg.sender, _debtAmt);
+    }
+
+    function _calculateDebt(uint256 _collateral) internal view returns(uint256) {
+        uint256 max = ( _collateral * _colFactorBps ) / 10_000;
+        return max;
     }
 }
