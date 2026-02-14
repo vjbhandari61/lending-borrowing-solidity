@@ -16,12 +16,14 @@ contract VaulCore is ERC20 {
 
     event Deposit(address indexed depositor, uint256 collateralAmt);
     event Borrow(address indexed borrower, uint256 debtAmt);
+    event Repay(address indexed repayer, uint256 debtAmt);
 
     error InsufficientAllowance();
     error InvalidAddress();
     error InsufficientCollateralForRequestedDebt();
     error InsufficientLiquidityInPool();
     error CannotBorrowMoreThanDebtCeiling();
+    error InvalidAmtRequested();
 
     constructor(
         string memory name_,
@@ -41,6 +43,13 @@ contract VaulCore is ERC20 {
     function borrow(uint256 debtAmt) external {
         // if(_collateralAsset.balanceOf(address(this)) >= debtAmt){ revert InsufficientLiquidityInPool(); }
         _borrow(debtAmt);
+    }
+
+    function repay(uint256 debtAmt) external {
+        // if(_collateralAsset.allowance(msg.sender, address(this)) < debtAmt) {
+        //     revert InsufficientAllowance();
+        // }
+        _repay(debtAmt);
     }
 
     function calculateDebt(uint256 collateralAmt) public view returns (uint256) {
@@ -69,6 +78,18 @@ contract VaulCore is ERC20 {
         _mint(msg.sender, _debtAmt);
 
         emit Borrow(msg.sender, _debtAmt);
+    }
+
+    function _repay(uint256 _debtAmt) internal {
+        Vault storage vault = _vaults[msg.sender];
+        if (vault.debt < _debtAmt) {
+            revert InvalidAmtRequested();
+        }
+
+        vault.debt -= _debtAmt;
+        _burn(msg.sender, _debtAmt);
+
+        emit Repay(msg.sender, _debtAmt);
     }
 
     function _calculateDebt(uint256 _collateral) internal view returns(uint256) {
