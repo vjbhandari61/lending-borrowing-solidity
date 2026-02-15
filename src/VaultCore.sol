@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract VaulCore is ERC20 {
+contract VaultCore is ERC20 {
     struct Vault {
         uint256 collateralAmt;
         uint256 debt;
