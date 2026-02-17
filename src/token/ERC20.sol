@@ -10,11 +10,7 @@ contract ERC20 {
     mapping(address => mapping(address => uint256)) private _allowances;
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
 
     error ERC20InvalidSender(address);
     error ERC20InvalidReceiver(address);
@@ -48,10 +44,7 @@ contract ERC20 {
         return _balances[account];
     }
 
-    function allowance(
-        address owner,
-        address spender
-    ) public view virtual returns (uint256) {
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -61,21 +54,14 @@ contract ERC20 {
         return true;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amt
-    ) public virtual returns (bool) {
+    function transferFrom(address from, address to, uint256 amt) public virtual returns (bool) {
         address spender = msg.sender;
         _spendAllowance(from, spender, amt);
         _transfer(from, to, amt);
         return true;
     }
 
-    function approve(
-        address spender,
-        uint256 amt
-    ) public virtual returns (bool) {
+    function approve(address spender, uint256 amt) public virtual returns (bool) {
         address owner = msg.sender;
         _approve(owner, spender, amt);
         return true;
@@ -135,12 +121,7 @@ contract ERC20 {
         _approve(_owner, _spender, _amt, true);
     }
 
-    function _approve(
-        address _owner,
-        address _spender,
-        uint256 _amt,
-        bool emitEvent
-    ) internal virtual {
+    function _approve(address _owner, address _spender, uint256 _amt, bool emitEvent) internal virtual {
         if (_owner == address(0)) {
             revert ERC20InvalidApprover(address(0));
         }
@@ -154,11 +135,7 @@ contract ERC20 {
         }
     }
 
-    function _spendAllowance(
-        address _owner,
-        address _spender,
-        uint256 _amt
-    ) internal virtual {
+    function _spendAllowance(address _owner, address _spender, uint256 _amt) internal virtual {
         uint256 currentAllowance = allowance(_owner, _spender);
         if (currentAllowance > type(uint256).max) {
             if (currentAllowance < _amt) {
